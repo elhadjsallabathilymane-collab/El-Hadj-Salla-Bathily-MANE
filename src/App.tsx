@@ -332,6 +332,138 @@ const ThumbnailLabView = () => {
 };
 
 
+// --- Settings View ---
+
+const SettingsView = () => {
+  const [config, setConfig] = useState({
+    geminiKey: localStorage.getItem('satan_gemini_key') || '',
+    heygenKey: localStorage.getItem('satan_heygen_key') || '',
+    avatarId: localStorage.getItem('satan_avatar_id') || '',
+    voiceId: localStorage.getItem('satan_voice_id') || '',
+  });
+
+  const saveConfig = () => {
+    localStorage.setItem('satan_gemini_key', config.geminiKey);
+    localStorage.setItem('satan_heygen_key', config.heygenKey);
+    localStorage.setItem('satan_avatar_id', config.avatarId);
+    localStorage.setItem('satan_voice_id', config.voiceId);
+    alert("Configuration sauvegardée localement !");
+  };
+
+  return (
+    <div className="p-8 max-w-4xl mx-auto space-y-8">
+      <header>
+        <h1 className="text-3xl font-bold text-slate-900 font-display">Configuration Système</h1>
+        <p className="text-slate-500">Gérez vos clés API et vos identifiants de production.</p>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-6">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <Settings className="text-indigo-600" size={20} /> Clés API
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-2">Gemini API Key (Optionnel si défini sur serveur)</label>
+              <input 
+                type="password"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-600"
+                value={config.geminiKey}
+                onChange={(e) => setConfig({...config, geminiKey: e.target.value})}
+                placeholder="AIza..."
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-2">HeyGen API Key</label>
+              <input 
+                type="password"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-600"
+                value={config.heygenKey}
+                onChange={(e) => setConfig({...config, heygenKey: e.target.value})}
+                placeholder="sk_v2_..."
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-6">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <Video className="text-amber-600" size={20} /> Identifiants HeyGen
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-2">Avatar ID</label>
+              <input 
+                type="text"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-600"
+                value={config.avatarId}
+                onChange={(e) => setConfig({...config, avatarId: e.target.value})}
+                placeholder="Identifiant de votre Talking Photo"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-2">Voice ID</label>
+              <input 
+                type="text"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-indigo-600"
+                value={config.voiceId}
+                onChange={(e) => setConfig({...config, voiceId: e.target.value})}
+                placeholder="Identifiant de la voix"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6">
+        <h3 className="font-bold text-lg flex items-center gap-2">
+          <Terminal className="text-indigo-400" size={20} /> Scripts de Commande Claude
+        </h3>
+        <p className="text-slate-400 text-sm">Copiez ces prompts dans Claude pour préparer vos batchs de contenus.</p>
+        
+        <div className="space-y-4">
+          <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Rewrite Engine Prompt</span>
+              <button 
+                onClick={() => navigator.clipboard.writeText("Prends ce transcript vidéo et réécris-le entièrement pour mon avatar secret. Ton expert en santé, 15000 chars, structure captivante...")}
+                className="text-slate-500 hover:text-white transition-colors"
+                title="Copier le prompt"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-300 font-mono italic opacity-70">"Analyse le transcript fourni. Réécris une version originale de 15 000 caractères..."</p>
+          </div>
+          
+          <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Thumbnail Strategy Prompt</span>
+              <button 
+                onClick={() => navigator.clipboard.writeText("Génère une stratégie de miniature YouTube hyper-cliquable pour ce sujet. Texte en gros, contraste élevé, flèches rouges...")}
+                className="text-slate-500 hover:text-white transition-colors"
+                title="Copier le prompt"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-300 font-mono italic opacity-70">"Crée un concept de miniature 16:9 à fort impact visuel basé sur..."</p>
+          </div>
+        </div>
+      </div>
+
+      <button 
+        onClick={saveConfig}
+        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl tracking-widest uppercase hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+      >
+        Sauvegarder & Connecter
+      </button>
+    </div>
+  );
+};
+
 const VideoFactoryView = ({ onGenerated }: { onGenerated: () => void }) => {
   const [url, setUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -739,24 +871,7 @@ export default function App() {
               {activeTab === 'thumbnail_gen' && <ThumbnailLabView />}
               {activeTab === 'library' && <LibraryView videos={videos} />}
               {activeTab === 'voice_control' && <SatanVoiceView onCommand={setActiveTab} />}
-              {['settings'].includes(activeTab) && (
-                <div className="p-12 space-y-8 max-w-2xl mx-auto">
-                   <h2 className="text-2xl font-bold text-slate-900 font-display">System Check</h2>
-                   <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 font-medium">Local OS Control</span>
-                        <CheckCircle2 size={18} className="text-emerald-500" />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 font-medium">yt-dlp Engine</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                          <span className="text-xs font-bold text-slate-900">READY</span>
-                        </div>
-                      </div>
-                   </div>
-                </div>
-              )}
+              {activeTab === 'settings' && <SettingsView />}
             </motion.div>
           </AnimatePresence>
         </div>

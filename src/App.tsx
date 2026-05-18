@@ -203,19 +203,16 @@ const DashboardView = ({ videos }: { videos: VideoEntry[] }) => (
 // --- Thumbnail Lab View ---
 
 const ThumbnailLabView = () => {
-  const [prompt, setPrompt] = useState('');
-  const [headline, setHeadline] = useState('');
-  const [concept, setConcept] = useState('');
   const [competitorUrl, setCompetitorUrl] = useState('');
   const [sourceImageUrl, setSourceImageUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [mode, setMode] = useState<'free' | 'premium'>('premium');
 
-  const fetchSourceThumbnail = async () => {
-    if (!competitorUrl) return;
+  const fetchSourceThumbnail = async (url: string) => {
+    if (!url) return;
     try {
-      const res = await fetch(`/api/thumbnail/source?url=${encodeURIComponent(competitorUrl)}`);
+      const res = await fetch(`/api/thumbnail/source?url=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (data.thumbnailUrl) setSourceImageUrl(data.thumbnailUrl);
     } catch (err) {
@@ -224,162 +221,123 @@ const ThumbnailLabView = () => {
   };
 
   const handleGenerate = async () => {
+    if (!sourceImageUrl) {
+      alert("Collez d'abord un lien YouTube valide.");
+      return;
+    }
     setIsGenerating(true);
     try {
-      const basePrompt = `YouTube thumbnail. Headline: ${headline}. Concept: ${concept}. Style: sharp, high contrast, viral.`;
-
       const res = await fetch('/api/thumbnail/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          prompt: basePrompt, 
           mode, 
           sourceUrl: sourceImageUrl 
         })
       });
       const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setGeneratedUrl(data.url);
     } catch (err) {
       console.error(err);
-      alert("Generation failed.");
+      alert("La création a échoué. Vérifiez vos clés API.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 font-display italic uppercase">Thumbnail Lab Pro</h1>
-          <p className="text-slate-500">Clone n'importe quelle miniature avec l'intelligence de Satan.</p>
-        </div>
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
-          <button 
-            onClick={() => setMode('free')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mode === 'free' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-          >
-            FREE
-          </button>
-          <button 
-            onClick={() => setMode('premium')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mode === 'premium' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-          >
-            PREMIUM (GEMINI)
-          </button>
-        </div>
+    <div className="p-8 max-w-6xl mx-auto space-y-12">
+      <header className="text-center space-y-4">
+        <h1 className="text-5xl font-black text-slate-900 font-display italic uppercase tracking-tighter">
+          Clonage de Miniature <span className="text-indigo-600">Satan</span>
+        </h1>
+        <p className="text-slate-500 max-w-2xl mx-auto text-lg">
+          Donnez simplement le lien d'une vidéo. Satan analyse le style, comprend le sujet, et génère une version **ORIGINALE** et **PROPRIÉTAIRE** pour vous.
+        </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Inputs */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Search size={14} className="text-indigo-600" /> Copier une Vidéo (URL)
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="https://youtu.be/..."
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none text-sm"
-                  value={competitorUrl}
-                  onChange={(e) => setCompetitorUrl(e.target.value)}
-                />
-                <button 
-                  onClick={fetchSourceThumbnail}
-                  className="p-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors"
-                >
-                  <CheckCircle2 size={18} />
-                </button>
-              </div>
-              {sourceImageUrl && (
-                <div className="aspect-video rounded-xl overflow-hidden border-2 border-indigo-100 shadow-inner">
-                  <img src={sourceImageUrl} className="w-full h-full object-cover grayscale-[0.5] opacity-80" alt="Source" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Plus size={14} className="text-amber-600" /> Titre de la Miniature
-              </label>
-              <input 
-                type="text" 
-                placeholder="e.g. 5 SECRETS DE SANTÉ"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none font-bold text-sm"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <ImageIcon size={14} className="text-indigo-600" /> Concept Visuel
-              </label>
-              <textarea 
-                placeholder="Décris ce qu'on doit voir (ex: un kilo d'or sur une balance)"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-24 outline-none text-sm"
-                value={concept}
-                onChange={(e) => setConcept(e.target.value)}
-              />
-            </div>
-
-            <button 
-              onClick={handleGenerate}
-              disabled={isGenerating || !headline}
-              className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black text-sm tracking-widest uppercase hover:bg-slate-900 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10"
-            >
-              {isGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={18} />}
-              {isGenerating ? 'Analyse & Création...' : 'Satanize Now'}
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Results */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-slate-900 rounded-[40px] p-8 aspect-video flex items-center justify-center relative overflow-hidden group shadow-2xl border-4 border-slate-800">
-            {isGenerating ? (
-              <div className="text-center space-y-6 relative z-10">
-                <div className="w-20 h-20 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto shadow-[0_0_30px_rgba(79,70,229,0.3)]"></div>
-                <p className="text-indigo-300 font-black uppercase tracking-widest text-sm italic">Infiltration des serveurs...</p>
-              </div>
-            ) : generatedUrl ? (
-              <motion.img 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                src={generatedUrl} 
-                className="w-full h-full object-cover" 
-                alt="Generated" 
-              />
-            ) : (
-              <div className="text-slate-700 flex flex-col items-center gap-6">
-                <ImageIcon size={80} opacity={0.1} />
-                <p className="font-black uppercase tracking-widest text-sm opacity-20 italic">Prêt pour le prochain Hit</p>
+      <div className="max-w-3xl mx-auto bg-white border-2 border-slate-200 rounded-[40px] p-10 shadow-2xl space-y-10">
+        <div className="space-y-6">
+          <label className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Search size={16} className="text-indigo-600" /> Lien de la vidéo concurrente
+          </label>
+          <div className="relative group">
+            <input 
+              type="text" 
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 outline-none text-lg font-medium focus:border-indigo-600 transition-all shadow-inner"
+              value={competitorUrl}
+              onChange={(e) => {
+                setCompetitorUrl(e.target.value);
+                const match = e.target.value.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+                if (match) fetchSourceThumbnail(e.target.value);
+              }}
+            />
+            {sourceImageUrl && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-24 aspect-video rounded-xl overflow-hidden border-2 border-white shadow-md">
+                <img src={sourceImageUrl} className="w-full h-full object-cover" alt="Source" />
               </div>
             )}
-            
-            {/* Overlay grid for "pro" look */}
-            <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
           </div>
-          
-          {generatedUrl && (
-            <div className="flex gap-4">
-              <button 
-                onClick={() => window.open(generatedUrl, '_blank')}
-                className="flex-1 bg-white border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <Download size={18} /> Télécharger HD
-              </button>
-              <button 
-                className="px-10 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
-              >
-                Upscale 4K
-              </button>
-            </div>
-          )}
         </div>
+
+        <div className="flex justify-between items-center bg-slate-50 p-6 rounded-3xl border border-slate-100">
+          <div className="space-y-1">
+            <h4 className="font-bold text-slate-900">Mode Stratégique</h4>
+            <p className="text-xs text-slate-500">Gemini analyse les KPIs visuels de la cible.</p>
+          </div>
+          <div className="flex bg-slate-200 p-1 rounded-xl">
+            {['free', 'premium'].map((m) => (
+              <button 
+                key={m}
+                onClick={() => setMode(m as 'free' | 'premium')}
+                className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button 
+          onClick={handleGenerate}
+          disabled={isGenerating || !sourceImageUrl}
+          className="w-full py-8 bg-slate-950 text-white rounded-3xl font-black text-2xl tracking-[0.1em] uppercase hover:bg-indigo-600 transition-all transform hover:-translate-y-1 active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none shadow-2xl"
+        >
+          {isGenerating ? (
+            <div className="flex items-center justify-center gap-4">
+              <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Infiltration en cours...</span>
+            </div>
+          ) : "Engager le Clonage Original"}
+        </button>
       </div>
+
+      <AnimatePresence>
+        {generatedUrl && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-4xl mx-auto space-y-6"
+          >
+            <div className="aspect-video bg-slate-900 rounded-[50px] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] border-8 border-white border-t-indigo-100 relative group">
+              <img src={generatedUrl} className="w-full h-full object-cover" alt="Original Artwork" />
+              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                 <button 
+                   onClick={() => window.open(generatedUrl, '_blank')}
+                   className="p-6 bg-white text-slate-900 rounded-full font-black text-sm uppercase tracking-widest hover:scale-110 transition-transform flex items-center gap-2"
+                 >
+                   <Download size={20} /> Télécharger l'Asset
+                 </button>
+              </div>
+            </div>
+            <p className="text-center text-slate-400 font-mono text-[10px] uppercase tracking-widest">
+              Généré via Satan Logic Protocol v4.0 • Asset Original Non-Plagié
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -545,7 +503,10 @@ const VideoFactoryView = ({ onGenerated }: { onGenerated: () => void }) => {
     try {
       const res = await fetch(`/api/transcript?url=${encodeURIComponent(url)}`);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        alert(data.error);
+        throw new Error(data.error);
+      }
       setTranscript(data.text);
       setStep(2);
       
@@ -556,18 +517,21 @@ const VideoFactoryView = ({ onGenerated }: { onGenerated: () => void }) => {
         body: JSON.stringify({ transcript: data.text, url })
       });
       const aiData = await aiRes.json();
+      if (aiData.error) throw new Error(aiData.error);
       
       setScript({
         video_inputs: [{
           input_text: aiData.input_text || "Error generating script.",
-          character: { type: "talking_photo", talking_photo_id: "your_photo_id" },
-          voice: { type: "text", input_text: aiData.input_text, voice_id: "your_voice_id" }
+          character: { type: "talking_photo", talking_photo_id: localStorage.getItem('satan_avatar_id') || "your_photo_id" },
+          voice: { type: "text", input_text: aiData.input_text, voice_id: localStorage.getItem('satan_voice_id') || "your_voice_id" }
         }]
       });
       setStep(3);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error during capture or rewrite. Check console.");
+      if (!err.message.includes("transcript")) {
+        alert("Erreur système lors de la réécriture IA. Vérifiez vos clés API.");
+      }
     } finally {
       setIsProcessing(false);
     }

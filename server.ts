@@ -55,15 +55,18 @@ async function startServer() {
   app.get("/api/transcript", async (req, res) => {
     const { url } = req.query;
     if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: "YouTube URL is required" });
+      return res.status(400).json({ error: "L'URL YouTube est requise." });
     }
     try {
       const transcript = await YoutubeTranscript.fetchTranscript(url);
+      if (!transcript || transcript.length === 0) {
+        return res.status(404).json({ error: "Aucun transcript trouvé pour cette vidéo. Assurez-vous que les sous-titres sont activés." });
+      }
       const text = transcript.map(item => item.text).join(" ");
       res.json({ text });
     } catch (error: any) {
       console.error("Transcript error:", error);
-      res.status(500).json({ error: "Failed to fetch transcript" });
+      res.status(500).json({ error: "Impossible de récupérer les sous-titres de cette vidéo. Essayez-en une autre." });
     }
   });
 
@@ -179,21 +182,21 @@ async function startServer() {
     if (!videoIdMatch) return res.status(400).json({ error: "Invalid YouTube URL" });
     
     const videoId = videoIdMatch[1];
-    res.json({ thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` });
+    res.json({ 
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      videoId 
+    });
   });
 
   // Thumbnail Generation
   app.post("/api/thumbnail/generate", async (req, res) => {
     const { prompt, mode, sourceUrl } = req.body;
     
-    let finalPrompt = prompt;
+    let finalPrompt = prompt || "A high-impact viral YouTube thumbnail";
 
     if (mode === 'premium' && sourceUrl) {
       try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        // We use Gemini to analyze the source image style and generate a perfect prompt for Pollinations
-        // Since we can't easily pass a remote URL to Gemini without fetching it first as a part,
-        // we'll fetch it here.
         const imageResponse = await axios.get(sourceUrl, { responseType: 'arraybuffer' });
         const base64Image = Buffer.from(imageResponse.data).toString('base64');
 
@@ -204,9 +207,11 @@ async function startServer() {
               mimeType: "image/jpeg",
             },
           },
-          { text: `Analyse le style de cette miniature YouTube (couleurs, disposition, polices). 
-          Génère un prompt de génération d'image en ANGLAIS extrêmement détaillé qui reproduit ce style exact mais pour le sujet suivant : ${prompt}. 
-          Le prompt doit inclure 'high contrast', 'vibrant colors', 'YouTube thumbnail style'. 
+          { text: `Analyse cette miniature YouTube.
+          Identifie le sujet, le texte affiché (headline) et l'esthétique générale.
+          Génère maintenant un prompt de génération d'image en ANGLAIS extrêmement détaillé pour créer une miniature ENTIÈREMENT NOUVELLE et ORIGINALE qui garde l'efficacité virale de celle-ci mais avec des visuels propres.
+          Sujet demandé par l'utilisateur: ${prompt || 'Identique à la source mais version originale'}.
+          Le prompt doit inclure: 'hyper-realistic', 'sharp focus', 'vivid lighting', 'professional photography'.
           Retourne SEULEMENT le prompt en anglais.` },
         ];
 
@@ -217,7 +222,6 @@ async function startServer() {
       }
     }
     
-    // Use Pollinations as the actual renderer (as per user's experience so far)
     const encodedPrompt = encodeURIComponent(finalPrompt);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
     res.json({ url: imageUrl, usedPrompt: finalPrompt });

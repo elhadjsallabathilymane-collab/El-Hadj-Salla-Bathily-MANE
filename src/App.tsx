@@ -206,22 +206,36 @@ const ThumbnailLabView = () => {
   const [prompt, setPrompt] = useState('');
   const [headline, setHeadline] = useState('');
   const [concept, setConcept] = useState('');
+  const [competitorUrl, setCompetitorUrl] = useState('');
+  const [sourceImageUrl, setSourceImageUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
-  const [mode, setMode] = useState<'free' | 'premium'>('free');
+  const [mode, setMode] = useState<'free' | 'premium'>('premium');
+
+  const fetchSourceThumbnail = async () => {
+    if (!competitorUrl) return;
+    try {
+      const res = await fetch(`/api/thumbnail/source?url=${encodeURIComponent(competitorUrl)}`);
+      const data = await res.json();
+      if (data.thumbnailUrl) setSourceImageUrl(data.thumbnailUrl);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const fullPrompt = `YouTube thumbnail, 16:9, HIGH CONTRAST. Background: blue gradient. 
-      Huge bold text: ${headline || 'MYSTERY REVEALED'}. 
-      Concept: ${concept || 'a scoop of powder'}. 
-      Style: clickbait, sharp edges, drop shadows.`;
+      const basePrompt = `YouTube thumbnail. Headline: ${headline}. Concept: ${concept}. Style: sharp, high contrast, viral.`;
 
       const res = await fetch('/api/thumbnail/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt, mode })
+        body: JSON.stringify({ 
+          prompt: basePrompt, 
+          mode, 
+          sourceUrl: sourceImageUrl 
+        })
       });
       const data = await res.json();
       setGeneratedUrl(data.url);
@@ -234,92 +248,131 @@ const ThumbnailLabView = () => {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-8 max-w-6xl mx-auto space-y-8">
       <header className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 font-display">Thumbnail Lab</h1>
-          <p className="text-slate-500">Craft viral thumbnails using AI presets.</p>
+          <h1 className="text-3xl font-bold text-slate-900 font-display italic uppercase">Thumbnail Lab Pro</h1>
+          <p className="text-slate-500">Clone n'importe quelle miniature avec l'intelligence de Satan.</p>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-2xl">
+        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
           <button 
             onClick={() => setMode('free')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mode === 'free' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
           >
-            FREE PATH
+            FREE
           </button>
           <button 
             onClick={() => setMode('premium')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mode === 'premium' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
           >
-            PREMIUM
+            PREMIUM (GEMINI)
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-6">
-          <div className="space-y-4">
-            <label className="text-sm font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-              <Plus size={16} className="text-indigo-600" /> Main Headline
-            </label>
-            <input 
-              type="text" 
-              placeholder="e.g. BETTER THAN STEROIDS"
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:border-indigo-600 outline-none font-bold"
-              value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Inputs */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <Search size={14} className="text-indigo-600" /> Copier une Vidéo (URL)
+              </label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="https://youtu.be/..."
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none text-sm"
+                  value={competitorUrl}
+                  onChange={(e) => setCompetitorUrl(e.target.value)}
+                />
+                <button 
+                  onClick={fetchSourceThumbnail}
+                  className="p-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors"
+                >
+                  <CheckCircle2 size={18} />
+                </button>
+              </div>
+              {sourceImageUrl && (
+                <div className="aspect-video rounded-xl overflow-hidden border-2 border-indigo-100 shadow-inner">
+                  <img src={sourceImageUrl} className="w-full h-full object-cover grayscale-[0.5] opacity-80" alt="Source" />
+                </div>
+              )}
+            </div>
 
-          <div className="space-y-4">
-            <label className="text-sm font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-              <ImageIcon size={16} className="text-amber-600" /> Visual Concept
-            </label>
-            <textarea 
-              placeholder="e.g. A scoop of white collagen powder on a digital scale..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 h-32 focus:border-indigo-600 outline-none"
-              value={concept}
-              onChange={(e) => setConcept(e.target.value)}
-            />
-          </div>
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <Plus size={14} className="text-amber-600" /> Titre de la Miniature
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. 5 SECRETS DE SANTÉ"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none font-bold text-sm"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+              />
+            </div>
 
-          <button 
-            onClick={handleGenerate}
-            disabled={isGenerating || !headline}
-            className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg tracking-widest uppercase hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-          >
-            {isGenerating ? <Clock className="animate-spin" /> : <ImageIcon size={20} />}
-            {isGenerating ? 'Cooking...' : `Satanize with ${mode.toUpperCase()}`}
-          </button>
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                <ImageIcon size={14} className="text-indigo-600" /> Concept Visuel
+              </label>
+              <textarea 
+                placeholder="Décris ce qu'on doit voir (ex: un kilo d'or sur une balance)"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-24 outline-none text-sm"
+                value={concept}
+                onChange={(e) => setConcept(e.target.value)}
+              />
+            </div>
+
+            <button 
+              onClick={handleGenerate}
+              disabled={isGenerating || !headline}
+              className="w-full py-4 bg-slate-950 text-white rounded-2xl font-black text-sm tracking-widest uppercase hover:bg-slate-900 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10"
+            >
+              {isGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={18} />}
+              {isGenerating ? 'Analyse & Création...' : 'Satanize Now'}
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="aspect-video bg-slate-200 rounded-3xl overflow-hidden flex items-center justify-center relative border-4 border-white shadow-xl">
+        {/* Right: Results */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-slate-900 rounded-[40px] p-8 aspect-video flex items-center justify-center relative overflow-hidden group shadow-2xl border-4 border-slate-800">
             {isGenerating ? (
-              <div className="text-center space-y-4">
-                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Generating Masterpiece...</p>
+              <div className="text-center space-y-6 relative z-10">
+                <div className="w-20 h-20 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto shadow-[0_0_30px_rgba(79,70,229,0.3)]"></div>
+                <p className="text-indigo-300 font-black uppercase tracking-widest text-sm italic">Infiltration des serveurs...</p>
               </div>
             ) : generatedUrl ? (
-              <img src={generatedUrl} className="w-full h-full object-cover" alt="Generated" />
+              <motion.img 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                src={generatedUrl} 
+                className="w-full h-full object-cover" 
+                alt="Generated" 
+              />
             ) : (
-              <div className="text-slate-400 flex flex-col items-center gap-4">
-                <ImageIcon size={64} opacity={0.2} />
-                <p className="font-bold uppercase tracking-widest text-xs">Preview will appear here</p>
+              <div className="text-slate-700 flex flex-col items-center gap-6">
+                <ImageIcon size={80} opacity={0.1} />
+                <p className="font-black uppercase tracking-widest text-sm opacity-20 italic">Prêt pour le prochain Hit</p>
               </div>
             )}
+            
+            {/* Overlay grid for "pro" look */}
+            <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
           </div>
           
           {generatedUrl && (
             <div className="flex gap-4">
               <button 
                 onClick={() => window.open(generatedUrl, '_blank')}
-                className="flex-1 bg-white border border-slate-200 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
+                className="flex-1 bg-white border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
               >
-                <Download size={20} /> Download PNG
+                <Download size={18} /> Télécharger HD
               </button>
               <button 
-                className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-500 transition-all"
+                className="px-10 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
               >
                 Upscale 4K
               </button>

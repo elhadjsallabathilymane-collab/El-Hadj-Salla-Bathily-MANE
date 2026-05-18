@@ -169,21 +169,58 @@ async function startServer() {
     }
   });
 
+  // Fetch YouTube Thumbnail URL
+  app.get("/api/thumbnail/source", (req, res) => {
+    const { url } = req.query;
+    if (!url || typeof url !== 'string') return res.status(400).json({ error: "URL required" });
+    
+    // Extract video ID
+    const videoIdMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+    if (!videoIdMatch) return res.status(400).json({ error: "Invalid YouTube URL" });
+    
+    const videoId = videoIdMatch[1];
+    res.json({ thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` });
+  });
+
   // Thumbnail Generation
   app.post("/api/thumbnail/generate", async (req, res) => {
-    const { prompt, mode } = req.body;
+    const { prompt, mode, sourceUrl } = req.body;
     
-    if (mode === 'premium') {
-      // Premium mode using Gemini (if supported for images) or a placeholder for now
-      // Since standard Gemini models are multimodal input but limited output on images in some regions
-      // we'll stick to a robust fallback logic.
-      res.json({ url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1280&height=720&model=flux&nologo=true` });
-    } else {
-      // Free mode using Pollinations
-      const encodedPrompt = encodeURIComponent(prompt);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true`;
-      res.json({ url: imageUrl });
+    let finalPrompt = prompt;
+
+    if (mode === 'premium' && sourceUrl) {
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // We use Gemini to analyze the source image style and generate a perfect prompt for Pollinations
+        // Since we can't easily pass a remote URL to Gemini without fetching it first as a part,
+        // we'll fetch it here.
+        const imageResponse = await axios.get(sourceUrl, { responseType: 'arraybuffer' });
+        const base64Image = Buffer.from(imageResponse.data).toString('base64');
+
+        const analysisPrompt = [
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: "image/jpeg",
+            },
+          },
+          { text: `Analyse le style de cette miniature YouTube (couleurs, disposition, polices). 
+          Génère un prompt de génération d'image en ANGLAIS extrêmement détaillé qui reproduit ce style exact mais pour le sujet suivant : ${prompt}. 
+          Le prompt doit inclure 'high contrast', 'vibrant colors', 'YouTube thumbnail style'. 
+          Retourne SEULEMENT le prompt en anglais.` },
+        ];
+
+        const result = await model.generateContent(analysisPrompt);
+        finalPrompt = (await result.response).text();
+      } catch (err) {
+        console.error("AI Analysis failed, falling back to basic prompt:", err);
+      }
     }
+    
+    // Use Pollinations as the actual renderer (as per user's experience so far)
+    const encodedPrompt = encodeURIComponent(finalPrompt);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+    res.json({ url: imageUrl, usedPrompt: finalPrompt });
   });
 
   // Vite middleware for development

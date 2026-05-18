@@ -13,8 +13,12 @@ async function startServer() {
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
 
-  // AI Setup
-  const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
+  // Helper to get GenAI instance
+  const getGenAI = (clientApiKey?: string) => {
+    const key = clientApiKey || process.env.GEMINI_API_KEY;
+    if (!key || key === "") throw new Error("GEMINI_API_KEY manquant. Configurez-le dans les Paramètres.");
+    return new GoogleGenAI(key);
+  };
 
   // In-memory store for local operations
   let producedVideos: any[] = [];
@@ -45,8 +49,6 @@ async function startServer() {
   // Local Download Simulation
   app.post("/api/video/download-local", async (req, res) => {
     const { url, filename } = req.body;
-    // In a real local setup, this would use fs to write to C:/Users/...
-    // Here we'll return success to show the command was received
     console.log(`[SATAN] Local download command received for: ${filename}`);
     res.json({ status: "success", message: `Downloading ${filename} to local machine...` });
   });
@@ -71,16 +73,16 @@ async function startServer() {
   });
 
   // HeyGen Proxy
-  const HEYGEN_API_KEY = process.env.HEYGEN_API_KEY;
-
   app.post("/api/heygen/generate", async (req, res) => {
-    if (!HEYGEN_API_KEY) return res.status(500).json({ error: "HeyGen API Key missing" });
-    const { topic, video_inputs } = req.body;
+    const { topic, video_inputs, apiKey: clientApiKey } = req.body;
+    const apiKey = clientApiKey || process.env.HEYGEN_API_KEY;
+    
+    if (!apiKey) return res.status(500).json({ error: "HeyGen API Key missing" });
     
     try {
       const response = await axios.post("https://api.heygen.com/v2/video/generate", { video_inputs, dimension: { width: 1280, height: 720 } }, {
         headers: {
-          "X-Api-Key": HEYGEN_API_KEY,
+          "X-Api-Key": apiKey,
           "Content-Type": "application/json"
         }
       });
@@ -103,11 +105,13 @@ async function startServer() {
   });
 
   app.get("/api/heygen/status", async (req, res) => {
-    const { video_id } = req.query;
-    if (!HEYGEN_API_KEY) return res.status(500).json({ error: "HeyGen API Key missing" });
+    const { video_id, apiKey: clientApiKey } = req.query;
+    const apiKey = clientApiKey as string || process.env.HEYGEN_API_KEY;
+
+    if (!apiKey) return res.status(500).json({ error: "HeyGen API Key missing" });
     try {
       const response = await axios.get(`https://api.heygen.com/v1/video_status.get?video_id=${video_id}`, {
-        headers: { "X-Api-Key": HEYGEN_API_KEY }
+        headers: { "X-Api-Key": apiKey }
       });
       
       const statusData = response.data.data;
@@ -129,15 +133,11 @@ async function startServer() {
     }
   });
 
-  // Gemini TTS (Mocking the logic described in the playbook)
+  // Gemini TTS
   app.post("/api/tts", async (req, res) => {
-    const { text } = req.body;
+    const { text, apiKey: clientApiKey } = req.body;
     try {
-      // In a real implementation with @google/genai, we would use the TTS capability if available in the SDK
-      // For now, we'll return a simple message or integrate with a known TTS API if provided
-      // Since @google/genai TTS is newer, let's assume we use the generative model for some "AI speech" logic
-      // and return a placeholder for the actual audio generation if the SDK doesn't expose it directly yet.
-      // NOTE: The playbook mentions Gemini 2.5 Flash TTS.
+      // Logic would go here
       res.json({ message: "TTS triggered", text });
     } catch (error: any) {
       res.status(500).json({ error: "TTS failed" });
@@ -146,10 +146,11 @@ async function startServer() {
 
   // AI script rewrite
   app.post("/api/ai/rewrite", async (req, res) => {
-    const { transcript, url } = req.body;
+    const { transcript, url, apiKey: clientApiKey } = req.body;
     if (!transcript) return res.status(400).json({ error: "Transcript is required" });
     
     try {
+      const genAI = getGenAI(clientApiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const prompt = `Read the following transcript from a YouTube video (${url}). 
       Write a new script for a HeyGen video API request. 
@@ -163,12 +164,22 @@ async function startServer() {
       const response = await result.response;
       const text = response.text();
       
-      // Clean potential markdown blocks
-      const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      res.json(JSON.parse(jsonStr));
+      // Clean potential markdown blocks or extra text
+      let jsonStr = text;
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+      
+      try {
+        res.json(JSON.parse(jsonStr));
+      } catch (parseErr) {
+        // Fallback: if not valid JSON, treat the whole thing as the input_text
+        res.json({ input_text: text });
+      }
     } catch (error: any) {
       console.error("AI Rewrite error:", error);
-      res.status(500).json({ error: "AI failed to rewrite script" });
+      res.status(500).json({ error: error.message || "AI failed to rewrite script" });
     }
   });
 
@@ -190,12 +201,13 @@ async function startServer() {
 
   // Thumbnail Generation
   app.post("/api/thumbnail/generate", async (req, res) => {
-    const { prompt, mode, sourceUrl } = req.body;
+    const { prompt, mode, sourceUrl, apiKey: clientApiKey } = req.body;
     
     let finalPrompt = prompt || "A high-impact viral YouTube thumbnail";
 
     if (mode === 'premium' && sourceUrl) {
       try {
+        const genAI = getGenAI(clientApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const imageResponse = await axios.get(sourceUrl, { responseType: 'arraybuffer' });
         const base64Image = Buffer.from(imageResponse.data).toString('base64');

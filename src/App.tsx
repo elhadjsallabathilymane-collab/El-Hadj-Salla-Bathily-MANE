@@ -232,7 +232,8 @@ const ThumbnailLabView = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           mode, 
-          sourceUrl: sourceImageUrl 
+          sourceUrl: sourceImageUrl,
+          apiKey: localStorage.getItem('satan_gemini_key') || ''
         })
       });
       const data = await res.json();
@@ -353,6 +354,9 @@ const SettingsView = () => {
     voiceId: localStorage.getItem('satan_voice_id') || '',
   });
 
+  const isGeminiSet = config.geminiKey.length > 5;
+  const isHeyGenSet = config.heygenKey.length > 5;
+
   const saveConfig = () => {
     localStorage.setItem('satan_gemini_key', config.geminiKey);
     localStorage.setItem('satan_heygen_key', config.heygenKey);
@@ -372,6 +376,11 @@ const SettingsView = () => {
         <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-6">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Settings className="text-indigo-600" size={20} /> Clés API
+            {isGeminiSet && isHeyGenSet ? (
+              <span className="text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full uppercase tracking-widest ml-auto">Connecté</span>
+            ) : (
+              <span className="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full uppercase tracking-widest ml-auto">Config requise</span>
+            )}
           </h3>
           
           <div className="space-y-4">
@@ -514,7 +523,11 @@ const VideoFactoryView = ({ onGenerated }: { onGenerated: () => void }) => {
       const aiRes = await fetch('/api/ai/rewrite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: data.text, url })
+        body: JSON.stringify({ 
+          transcript: data.text, 
+          url,
+          apiKey: localStorage.getItem('satan_gemini_key') || ''
+        })
       });
       const aiData = await aiRes.json();
       if (aiData.error) throw new Error(aiData.error);
@@ -546,7 +559,8 @@ const VideoFactoryView = ({ onGenerated }: { onGenerated: () => void }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           topic: url.split('v=')[1]?.substring(0, 10) || "Auto Video",
-          video_inputs: script.video_inputs 
+          video_inputs: script.video_inputs,
+          apiKey: localStorage.getItem('satan_heygen_key') || ''
         })
       });
       const data = await res.json();
@@ -861,7 +875,8 @@ export default function App() {
     const processing = videos.filter(v => v.status === 'processing');
     processing.forEach(async (v) => {
       try {
-        await fetch(`/api/heygen/status?video_id=${v.id}`);
+        const key = localStorage.getItem('satan_heygen_key') || '';
+        await fetch(`/api/heygen/status?video_id=${v.id}&apiKey=${encodeURIComponent(key)}`);
       } catch (err) {
         console.error("Status check failed", err);
       }

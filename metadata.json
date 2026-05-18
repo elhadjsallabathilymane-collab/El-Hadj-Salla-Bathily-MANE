@@ -1,0 +1,11 @@
+{
+  "name": "Satan Command Center",
+  "description": "An AI-powered YouTube automation dashboard for script writing, video generation, and thumbnail creation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
